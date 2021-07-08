@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <!-- 模板 -->
+  <div id="root">
+    <div>
+      <div>
+        <p>{{name}}-{{message}}</p>
+      </div>
+    </div>
+    <p>{{name}}</p>
+    <p>{{message}}</p>
+  </div>
+  <script>
+    // 将模板数据挂载到DOM元素上
+    //1.拿到模板
+    //2.拿到数据data
+    //3.将数据与模板结合，得到HTML元素
+    //4.放到页面上
+
+    //匹配{{}}
+    let rkuohao = /\{\{(.+?)\}\}/g;
+    //1
+    let tmnode = document.querySelector('#root')
+    //2
+    let data = {
+      name: 'jack',
+      message: "信息"
+    }
+    //3 将数据放到模板上
+    //一般使用递归
+    //这个案例中template就是DOM元素
+    //在vue中是DOM->字符串模板->VNode->真正的DOM
+
+    function complie(template, data) {
+      let childNodes = template.childNodes //取子元素
+      for (let i = 0; i < childNodes.length; i++) {  //遍历子元素
+        let type = childNodes[i].nodeType    //判断子节点元素类型 nodetype 1 表示元素 3 表示文本
+        if (type === 3) {    //文本节点
+          //判断节点是不是有{{}}插值
+          let txt = childNodes[i].nodeValue //获取子节点的值
+
+          //有{{}}进行数据替换
+          txt = txt.replace(rkuohao, function (_, g) {
+            let key = g.trim()
+            let value = data[key]
+            return value
+          })
+          //将替换的值赋值给子节点
+          childNodes[i].nodeValue = txt
+        }
+        if (type === 1) { //元素节点
+          complie(childNodes[i], data) //是元素节点调用自己继续判断，直到没有元素节点
+        }
+      }
+    }
+    //直接将模板传入进去，此时数据是直接将{{}}里面的数据进行替换，并没有生成新的模板
+    //这样做在数据要进行实时更新时会找不到{{}}进行替换，所示需要进行一个模板克隆
+    let generateNode = tmnode.cloneNode(true) //将克隆后的模板传入到函数中
+    console.log(tmnode)
+    complie(generateNode, data)
+    console.log(generateNode)
+    //克隆后的模板传到函数上去，数据在模板上挂载上去了，但是没有在页面进行渲染
+    //4.
+    root.parentNode.replaceChild(generateNode, root)
+  </script>
+</body>
+
+</html>

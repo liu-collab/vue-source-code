@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>创建虚拟DOM</title>
+</head>
+<!-- 使用虚拟DOM，将真正的DOM创建为虚拟DOM，在将虚拟DOM挂载为真实的DOM 
+     为什么要用虚拟DOM     
+     js每操作一次操作DOM，会使DOM进行重排或者重绘，每次操作都会消耗大量资源
+     用js操作 虚拟DOM，DOM元素会在内存中更改，等所有操作结束之后，只需要一次更新即可，提高性能
+-->
+
+<div class="root">
+  <div class="id" title="dom">hello</div>
+  <div>
+    <ul>
+      <li>1</li>
+      <li>2</li>
+      <li>3</li>
+    </ul>
+  </div>
+</div>
+
+<body>
+  <script>
+    // <div /> => { tag: 'div' }
+    // 文本节点 => { tag: undefined, value: '文本节点' }
+    // <div title="1" class="c" /> => { tag: 'div', data: { title: '1', class: 'c' } }
+    // <div><div /></div> => { tag: 'div', children: [ { tag: 'div' } ] }
+
+    //1.创建虚拟DOM
+    class VNnode {
+      //构造函数
+      constructor(tag, data, value, type) {
+        //标签名转小写
+        this.tag = tag && tag.toLowerCase()
+        this.data = data
+        this.value = value
+        this.type = type
+        this.children = []
+
+      }
+      //追加子元素
+      appendChild(vnode) {
+        this.children.push(vnode)
+      }
+    }
+
+    // 2.生成虚拟DOM
+    //使用递归来变量DOM元素，生成虚拟DOM
+    //vue源码使用栈结构 ，用栈结构存储父元素来实现递归
+    function getVNode(node) {
+      //获取节点类型
+      let nodeType = node.nodeType
+
+      let _vnode = null
+      ///标签节点
+      if (nodeType === 1) {
+        let nodeName = node.nodeName
+        //节点属性
+        let attrs = node.attributes
+        //获取data
+        let _attrObj = {}
+        //遍历所有节点
+        for (let i = 0; i < attrs.length; i++) {
+          _attrObj[attrs[i].nodeName] = attrs[i].nodeValue
+        }
+        //nodeName标签名 ,_attrObj 属性 第三位value  nodeType 标签类
+        _vnode = new VNnode(nodeName, _attrObj, undefined, nodeType)
+        //node的子节点
+        let childNodes = node.childNodes
+        console.log(childNodes)
+        for (let i = 0; i < childNodes.length; i++) {
+          _vnode.appendChild(getVNode(childNodes[i]))
+        }
+
+      }
+      //文本节点
+      else if (nodeType === 3) {
+        _vnode = new VNnode(undefined, undefined, node.nodeValue, nodeType)
+
+
+      }
+      return _vnode
+    }
+
+    let root = document.querySelector('.root')
+    //转换为虚拟DOM
+    let vroot = getVNode(root)
+    console.log(vroot)
+
+    //3.将虚拟DOM生成真正的DOM
+    //逆转第二步骤
+    function parseVNode(vnode) {
+      //获取类型
+      let type = vnode.type
+      //保存标签名
+      let _node = null
+      //文本节点
+      if (type === 3) {
+        return document.createTextNode(vnode.value) //创建文本节点
+      }
+      else if (type === 1) {   //元素节点
+        _node = document.createElement(vnode.tag)  // 创建元素标签名
+        //1.属性
+        let data = vnode.data  //data此时为键值对 即还原 class = 'value'
+        Object.keys(data).forEach((key) => {
+          let attrName = key  //属性名
+          let attrValue = data[key]  //属性值
+          //绑定标签的属性值
+          _node.setAttribute(attrName, attrValue)
+        })
+        //2.子节点
+        let children = vnode.children
+        console.log(children)
+        //遍历子节点 ,子节点此时为虚拟DOM
+        children.forEach(subvnode => {
+          _node.appendChild(parseVNode(subvnode))  //调用转换真实DOM函数,递归转换为子元素
+        })
+        return _node;
+      }
+
+    }
+
+    //将虚拟DOM转换为真实DOM
+    let Edom = parseVNode(vroot)
+    console.log(Edom)
+  </script>
+</body>
+
+</html>

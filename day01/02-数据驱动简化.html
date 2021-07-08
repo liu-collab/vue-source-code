@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <!-- 模板 -->
+  <div id="root">
+    <div>
+      <p>{{name}}-{{message}}</p>
+    </div>
+    <p>{{name}}</p>
+    <p>{{message}}</p>
+  </div>
+
+  <script>
+    //匹配{{}}
+    let rkuohao = /\{\{(.+?)\}\}/g;
+    function complie(template, data) {
+      let childNodes = template.childNodes //取子元素
+      for (let i = 0; i < childNodes.length; i++) {  //遍历子元素
+        let type = childNodes[i].nodeType    //判断子节点元素类型 nodetype 1 表示元素 3 表示文本
+        if (type === 3) {    //文本节点
+          //判断节点是不是有{{}}插值
+          let txt = childNodes[i].nodeValue //获取子节点的值
+
+          //有{{}}进行数据替换
+          txt = txt.replace(rkuohao, function (_, g) {
+            let key = g.trim()
+            let value = data[key]
+            return value
+          })
+          //将替换的值赋值给子节点
+          childNodes[i].nodeValue = txt
+        }
+        if (type === 1) { //元素节点
+          complie(childNodes[i], data) //是元素节点调用自己继续判断，直到没有元素节点
+        }
+      }
+    }
+    function JGvue(options) {
+      //vue:内部数据使用下划线开头，只读数据使用$开头
+      this._data = options.data  //数据
+      this._el = options.el  //模板
+
+      //准备工作(准备模板)
+      this._templateDOM = document.querySelector(this._el);
+      console.log(document.querySelector(this._el))
+
+      //父节点
+      this._parent = this._templateDOM.parentNode;
+      //渲染工作
+      this.render()
+    }
+    //渲染函数
+    JGvue.prototype.render = function () {
+      this.compiler()
+    }
+    //编译 将模板于数据结合 得到真正的DOM
+    JGvue.prototype.compiler = function () {
+      let realHTMLDOM = this._templateDOM.cloneNode(true)  //用模板拷贝得到一个准DOM
+      complie(realHTMLDOM, this._data)
+      //将DOM元素放到页面中
+      this.update(realHTMLDOM)
+    }
+    //将DOM元素放到页面中
+    JGvue.prototype.update = function (real) {
+      //用准DOM代替原来的DOM
+      this._parent.replaceChild(real, document.querySelector('#root'))
+
+    }
+
+    let app = new JGvue({
+      el: '#root',
+      data: {
+        name: "jack"
+        , message: "aaaa"
+      }
+    });
+  </script>
+</body>
+
+</html>
