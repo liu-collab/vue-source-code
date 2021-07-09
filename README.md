@@ -1,9 +1,6 @@
 数据驱动
 
-前提: 
 
-1. 你一定得用过 vue
-2. 如果没有使用过的 可以去 官网 去看一看 使用教程
 
 
 # Vue 与模板
@@ -41,8 +38,107 @@ Vue 利用 我们提供的数据 和 页面中 模板 生成了 一个新的 HTM
 
 目标:
 
-1. 怎么将真正的 DOM 转换为 虚拟 DOM
-2. 怎么将虚拟 DOM 转换为 真正的 DOM
+# 怎么将真正的 DOM 转换为 虚拟 DOM
+  ### 1.创建虚拟DOM
+   ```js
+    class VNnode {
+      //构造函数
+      constructor(tag, data, value, type) {
+        //标签名转小写
+        this.tag = tag && tag.toLowerCase()
+        this.data = data
+        this.value = value
+        this.type = type
+        this.children = []
+
+      }
+      //追加子元素
+      appendChild(vnode) {
+        this.children.push(vnode)
+      }
+    }
+   ```
+
+   
+
+  ### 2.生成虚拟DOM
+    //使用递归来变量DOM元素，生成虚拟DOM
+    //vue源码使用栈结构 ，用栈结构存储父元素来实现递归
+   ```js
+    function getVNode(node) {
+      //获取节点类型
+      let nodeType = node.nodeType
+
+      let _vnode = null
+      ///标签节点
+      if (nodeType === 1) {
+        let nodeName = node.nodeName
+        //节点属性
+        let attrs = node.attributes
+        //获取data
+        let _attrObj = {}
+        //遍历所有节点
+        for (let i = 0; i < attrs.length; i++) {
+          _attrObj[attrs[i].nodeName] = attrs[i].nodeValue
+        }
+        //nodeName标签名 ,_attrObj 属性 第三位value  nodeType 标签类
+        _vnode = new VNnode(nodeName, _attrObj, undefined, nodeType)
+        //node的子节点
+        let childNodes = node.childNodes
+        console.log(childNodes)
+        for (let i = 0; i < childNodes.length; i++) {
+          _vnode.appendChild(getVNode(childNodes[i]))
+        }
+
+      }
+      //文本节点
+      else if (nodeType === 3) {
+        _vnode = new VNnode(undefined, undefined, node.nodeValue, nodeType)
+
+
+      }
+      return _vnode
+    }
+   ```
+   
+    
+    
+# 怎么将虚拟 DOM 转换为 真正的 DOM
+  # 3.将虚拟DOM生成真正的DOM
+    //逆转第二步骤
+   ```js
+    function parseVNode(vnode) {
+      //获取类型
+      let type = vnode.type
+      //保存标签名
+      let _node = null
+      //文本节点
+      if (type === 3) {
+        return document.createTextNode(vnode.value) //创建文本节点
+      }
+      else if (type === 1) {   //元素节点
+        _node = document.createElement(vnode.tag)  // 创建元素标签名
+        //1.属性
+        let data = vnode.data  //data此时为键值对 即还原 class = 'value'
+        Object.keys(data).forEach((key) => {
+          let attrName = key  //属性名
+          let attrValue = data[key]  //属性值
+          //绑定标签的属性值
+          _node.setAttribute(attrName, attrValue)
+        })
+        //2.子节点
+        let children = vnode.children
+        console.log(children)
+        //遍历子节点 ,子节点此时为虚拟DOM
+        children.forEach(subvnode => {
+          _node.appendChild(parseVNode(subvnode))  //调用转换真实DOM函数,递归转换为子元素
+        })
+        return _node;
+      }
+
+    }
+   ```
+
 
 思路与深拷贝类似
 
@@ -67,7 +163,7 @@ Vue 利用 我们提供的数据 和 页面中 模板 生成了 一个新的 HTM
 1. 判断元素
 2. 虚拟 DOM 的 render 方法
 
-1. 判断元素:
+1. 判断元素: 
 
 Vue 本质上是使用 HTML 的字符串作为模板的, 将字符串的 模板 转换为 AST, 再转换为 VNode.
 
