@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <script>
+    var o = {}
+
+    o.name = "jack"
+
+    Object.defineProperty(o, 'age', {
+      writable: true,   //可写入
+      configurable: true, //可配置
+      enumerable: !true,    //是否可枚举,即属性是否能够被for in 循环出来
+      value: 19
+
+    })
+    let _value //用中间值来保存需要存入的值
+    Object.defineProperty(o, 'height', {
+      configurable: true, //可配置
+      enumerable: true,    //是否可枚举,即属性是否能够被for in 循环出来
+      set(newVal) {      //赋值时触发  
+        _value = newVal
+        console.log('赋值操作')
+      },
+      get() {      //访问属性 ,取值时触发
+        console.log('取值操作')
+        return _value
+
+      }
+    })
+    //存在的问题 _value 是全局作用域 ,意味着任何人都可以访问到
+    //解决方法 用一个函数 将中间值作为参数传入进去,这时参数是局部变量
+    function defineRactive(taget, key, _value, enumerable) {
+      Object.defineProperty(o, 'height', {
+        configurable: true, //可配置
+        enumerable: !!enumerable,    //是否可枚举,即属性是否能够被for in 循环出来
+        set(newVal) {      //赋值时触发  
+          _value = newVal
+        },
+        get() {      //访问属性 ,取值时触发
+          return _value
+        }
+      })
+    }
+    //这里将对象转换为响应式
+    let keys = Object.keys(o)
+    for (let i = 0; i < keys.length; i++) {
+      defineRactive(o, keys[i], o[keys[i]], true)
+    }
+  </script>
+</body>
+
+</html>

@@ -140,6 +140,99 @@ Vue 利用 我们提供的数据 和 页面中 模板 生成了 一个新的 HTM
    ```
 
 
+ # vue二次提交思路
+   每次生成虚拟DOM1之前还会生成一个新的虚拟DOM2
+     * 这个新的虚拟DOM2用来响应页面数据发生改变，，每发生一次数据改变就会生成一个新的虚拟DOM2 (缓存的是抽象语法树AST)
+     * 到时会生成多个虚拟DOM,因为js是底层决定了数据数据发生改变就必须重新渲染页面
+     * 这里vue将js的机制放到内存中,并且利用了二次提交(生成两种虚拟DOM)
+     * 生成的多个虚拟DOM利用diff算法比较虚拟DOM1和虚拟DOM2之间的不同 
+     * 等所有的所有的虚拟DOM2都提交了不同,然后进行更新虚拟DOM1
+     * 最后虚拟DOM1只要提交一次即可更新所有在真实DOM上的数据   
+     * 见图解
+     * 用二次提交的优点
+     *  1.在页面中DOM和虚拟DOM是一一对应的关系  如果每次都用新的虚拟DOM提交,需要重新绑定,消耗性能
+
+      ![Image text](https://github.com/liu-collab/vue-source-code/blob/main/day02/img/JGVue.png)
+
+      //将带坑的vnode与数据(data)进行结合 ,得到填充数据的VNode:,模拟AST+data =>VNode
+  ```js
+      
+    function combine(vnode, data) {
+      this._type = vnode.type
+      this._data = vnode.data
+      this._value = vnode.value
+      this._tag = vnode.tag
+      this._children = vnode.children
+
+      let _vnode = null
+      if (_type === 3) {  //文本节点
+        //处理文本
+        _value = _value.replace(rkuohao, function (_, g) {
+          return getValurBypath(data, g.trim());
+        });
+
+        _vnode = new VNnode(_tag, _data, _value, _type)
+
+      } else if (_type === 1) {//元素节点
+        _vnode = new VNnode(_tag, _data, _value, _type)
+        _children.forEach(_subVnode => _vnode.appendChild(combine(_subVnode, data)))
+      }
+      return _vnode
+    }
+  ```
+  # 模拟vue从真实的DOM 到生成虚拟DOM2 再到提交到虚拟DOM1 最后渲染到页面
+  ```js
+   function JGvue(options) {
+      this._data = options.data
+      let elem = document.querySelector(options.el)//这里直接用DOM  vue里面是字符串
+      this._template = elem
+      this._parent = elem.parentNode
+      this.mount()  //挂载方法
+    }
+    JGvue.prototype.mount = function () {
+
+      //渲染函数
+      //需要提供一个render方法 用来生成虚拟DOM
+      this.render = this.createRenderFn()
+
+      this.mountComponent()
+
+    }
+    
+    JGvue.prototype.mountComponent = function () {
+      //执行mountComponent
+      let mount = () => {
+        this.update(this.render())
+      }
+      mount.call(this)
+    }
+    //   //创建渲染函数 ,目的是为了缓存抽象语法书（ast) 这里用虚拟DOM来实现
+    JGvue.prototype.createRenderFn = function () {
+
+      let ast = getVNode(this._template)
+      // vue: AST  + data 生成 虚拟DOM(Vnode)
+      // 这里用带坑的Vnode + data   生成Vnode
+      return function render() {
+
+        let _tmp = combine(ast, this._data)
+
+        return _tmp
+
+      }
+
+    }
+    //将DOM渲染到页面中
+    JGvue.prototype.update = function (vnode) {
+      //生成真实DOM
+      let realDOM = parseVNode(vnode)
+      // debugger
+      // let _ = 0
+      //渲染到页面上 父元素替换子元素
+      this._parent.replaceChild(realDOM, document.querySelector('#root'))
+
+
+    }
+  ```
 思路与深拷贝类似
 
 
@@ -278,6 +371,11 @@ Object.defineProperty( 对象, '设置什么属性名', {
 // 简化后的版本
 function defineReactive( target, key, value, enumerable ) {
   // 函数内部就是一个局部作用域, 这个 value 就只在函数内使用的变量 ( 闭包 )
+   if ( typeof value === 'object' && value != null && !Array.isArray( value ) ) {
+        // 是非数组的引用类型
+        reactify( value ); // 递归
+      }
+
   Object.defineProperty( target, key, {
     configurable: true,
     enumerable: !!enumerable,
@@ -312,8 +410,33 @@ let o = {
 ```
 
 怎么处理呢??? 递归
+# 对象的数据响应化
+```js
+// 将对象 o 响应式化
+    function reactify( o ) {
+      let keys = Object.keys( o );
 
-
+      for ( let i = 0; i < keys.length; i++ ) {
+        let key = keys[ i ]; // 属性名
+        let value = o[ key ];
+        // 判断这个属性是不是引用类型, 判断是不是数组
+        // 如果引用类型就需要递归, 如果不是就不用递归
+        //  如果不是引用类型, 需要使用 defineReactive 将其变成响应式的
+        //  如果是引用类型, 还是需要调用 defineReactive 将其变成响应式的
+        // 如果是数组呢? 就需要循数组, 然后将数组里面的元素进行响应式化
+        if ( Array.isArray( value ) ) {
+          // 数组
+          for ( let j = 0; j < value.length; j++ ) {
+            reactify( value[ j ] ); // 递归
+          }
+        } else {
+          // 对象或值类型
+          defineReactive( o, key, value, true );
+        }
+      }
+    }
+```
+# 数组的数据响应化
 对于对象可以使用 递归来响应式化, 但是数组我们也需要处理
 
 - push
@@ -325,9 +448,35 @@ let o = {
 - splice
 
 要做什么事情呢?
+```js
+ //改写数组 ,让数组也可以实现响应式
+    //思路,原型链的继承
+    let arr = []
+    //继承关系: arr -> Array.prototyep ->Object.prototype
+    //重新继承关系:arr -> 改写的方法 ->  Array.prototype->Object.prototype
+
+    //新建一个对象 继承至Array.prototype  下面就是arr指向这个对象
+    let array_methods = Object.create(Array.prototype)
+
+    ARRAY_METHOD.forEach(method => {
+      array_methods[method] = function () {
+        //调用原来的方法,改写this指向
+        // console.log('调用的是' + method + '方法')
+         //数据响应化
+        for (let i = 0; i < arguments.length; i++) {
+          reactify(arguments[i])
+        }
+        let res = Array.prototype[method].apply(this, arguments)
+        return res
+      }
+    })
+    //将arr的隐式原型链指向arr_methods
+    arr.__proto__ = array_methods
+```
 
 1. 在改变数组的数据的时候, 要发出通知
    - Vue 2 中的缺陷, 数组发生变化, 设置 length 没法通知 ( Vue 3 中使用 Proxy 语法 ES6 的语法解决了这个问题 )
+
 2. 加入的元素应该变成响应式的
 
 技巧: 如果一个函数已经定义了, 但是我们需要扩展其功能, 我们一般的处理办法:

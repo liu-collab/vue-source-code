@@ -170,6 +170,8 @@
       let elem = document.querySelector(options.el)//这里直接用DOM  vue里面是字符串
       this._template = elem
       this._parent = elem.parentNode
+
+      reactify(this._data, this /* 将vue实例传入进去调用mount进行刷新*/)
       this.mount()  //挂载方法
     }
     JGvue.prototype.mount = function () {
@@ -215,6 +217,89 @@
 
 
     }
+
+    //数据响应化
+    let ARRAY_METHOD = [
+      'push',
+      'pop',
+      'shift',
+      'unshift',
+      'reverse',
+      'sort',  //排序
+      'splice',
+    ];
+    //新建一个对象 继承至Array.prototype  下面就是arr指向这个对象
+    let array_methods = Object.create(Array.prototype)
+
+    ARRAY_METHOD.forEach(method => {
+      array_methods[method] = function () {
+        //调用原来的方法,改写this指向
+        console.log('调用的是' + method + '方法')
+
+        //数据响应化
+        for (let i = 0; i < arguments.length; i++) {
+          reactify(arguments[i])
+        }
+        let res = Array.prototype[method].apply(this, arguments)
+        return res
+      }
+    })
+
+    // 简化后的版本
+    function defineReactive(target, key, value, enumerable) {
+      //295行传入了vue实例 this指向vue实例
+
+      that = this
+
+      // 函数内部就是一个局部作用域, 这个 value 就只在函数内使用的变量 ( 闭包 )
+
+      if (typeof value === 'object' && value != null && !Array.isArray(value)) {
+        // 是非数组的引用类型
+        reactify(value); // 递归
+      }
+
+      Object.defineProperty(target, key, {
+        configurable: true,
+        enumerable: !!enumerable,
+
+        get() {
+          console.log(`读取 ${key} 属性`); // 额外
+          return value;
+        },
+        set(newVal) {
+          console.log(`设置 ${key} 属性为: ${newVal}`); // 额外 
+          //数据响应化
+          // for (let i = 0; i < newVal.length; i++) {
+          //   reactify(newVal[i])
+          // }
+          //模板进行刷新,vue实例中有刷新方法
+          value = newVal;
+          that.mountComponent()
+        }
+      });
+    }
+    // 将对象 o 响应式化
+    function reactify(o, vm) {
+      let keys = Object.keys(o);
+
+      for (let i = 0; i < keys.length; i++) {
+        let key = keys[i]; // 属性名
+        let value = o[key];
+
+        if (Array.isArray(value)) {
+          // 数组
+          //数组响应化
+          value.__proto__ = array_methods
+          for (let j = 0; j < value.length; j++) {
+            reactify(value[j], vm); // 递归
+          }
+        } else {
+          // 对象或值类型
+          defineReactive.call(vm, o, key, value, true);
+        }
+      }
+    }
+
 
     let app = new JGvue({
       el: '#root',

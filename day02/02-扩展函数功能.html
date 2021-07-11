@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <script>
+    //1.用一个临时变量存储函数
+    //2.重新定义原来的函数
+    //3.定义扩展的功能
+    //4.调用临时的那个函数
+
+    function func() {
+      console.log(1111)
+    }
+
+    //1
+    var _tmp = func
+
+    //2
+    func = function () {
+      //4
+      _tmp()
+      //3
+      console.log(222)
+    }
+
+    func()
+  </script>
+</body>
+
+</html>
