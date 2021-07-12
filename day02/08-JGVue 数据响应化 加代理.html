@@ -171,8 +171,12 @@
       this._template = elem
       this._parent = elem.parentNode
 
-      reactify(this._data, this /* 将vue实例传入进去调用mount进行刷新*/)
+      // reactify(this._data, this /* 将vue实例传入进去调用mount进行刷新*/)
+      //利用代理将数据this._data.name映射到 this._data
+      this.initData()
+
       this.mount()  //挂载方法
+
     }
     JGvue.prototype.mount = function () {
 
@@ -217,6 +221,7 @@
 
 
     }
+
 
     //数据响应化
     let ARRAY_METHOD = [
@@ -272,13 +277,18 @@
           // for (let i = 0; i < newVal.length; i++) {
           //   reactify(newVal[i])
           // }
+
+          if (typeof newVal === 'object' && newVal != null) {
+            value = reactify(newVal);
+          } else {
+            value = newVal
+          }
           //模板进行刷新,vue实例中有刷新方法
-          value = reactify(newVal);
           that.mountComponent()
         }
       });
     }
-    // 将对象 o 响应式化
+    // 将对象 o 响应式化  存在缺陷 ,当传过来的值是一个对象时,只能把对象里面的属性进行转换,不能转换对象
     function reactify(o, vm) {
       let keys = Object.keys(o);
 
@@ -300,11 +310,85 @@
       }
     }
 
+    //取代原来reactify ,将对象转换为响应式
+
+    // function observer(obj) {   //将传入过来的对象进行转换
+    //   //1.先查看对象的成员,, 递归
+    //   //2.使用defineReactive方法
+    //   let keys = Object.keys(obj)
+    //   for (let i = 0; i < keys.length; i++) {
+    //     let key = keys[i]
+    //     //判断是否是数组
+    //     if (Array.isArray(obj[key])) {
+    //       //遍历成员
+    //       for (let j = 0; j < obj[key].length; j++) {
+    //         //将成员转换为响应式的
+    //         observer(obj[key][j], vm)
+    //       }
+    //     } else {
+    //       //递归,将obj[key]转换为响应式
+    //       observer(obj[key], vm)
+    //     }
+    //   }
+    // }
+
+
+    //代理数据
+    JGvue.prototype.initData = function () {
+      //1.遍历this._data的属性 ,将属性转换为响应式
+      //2.将直接属性代理到实例上
+      let keys = Object.keys(this._data)
+      //响应式化
+      for (let i = 0; i < keys.length; i++) {
+        //这里将对象 this._data[keys[i]] 变成响应式
+        reactify(this._data, this)
+      }
+
+      //代理
+      for (let i = 0; i < keys.length; i++) {
+        //这里将this._data[keys[i]] 映射到 this[keys[i]]
+        //首先要让this提供[keys[i]]的属性
+        // //在访问这个属性的时候就相当于访问this._data[keys[i]]
+        // Object.defineProperty(this, keys[i], {
+        //   enumerable: true,
+        //   configurable: true,
+        //   get() {
+        //     //访问 keys[i] 映射到this._data[keys[i]]
+        //     return this._data[keys[i]]
+        //   },
+        //   set(newValue) {
+
+        //     this._data[keys[i]] = newValue
+        //   }
+
+        // })
+
+        proxy(this, '_data', keys[i])
+      }
+    }
+    //代理 将某一个对象的属性 访问 映射到对象的某一个属性成员上
+    function proxy(target, prop, key) {
+      //在访问这个属性的时候就相当于访问this._data[keys[i]]
+      Object.defineProperty(target, key, {
+        enumerable: true,
+        configurable: true,
+        get() {
+          //访问 keys[i] 映射到this._data[keys[i]]
+          return target[prop][key]
+        },
+        set(newValue) {
+
+          target[prop][key] = newValue
+        }
+
+      })
+    }
+
 
     let app = new JGvue({
       el: '#root',
       data: {
-        name: "lack",
+        name: "jack",
         age: 15,
         datas: [
           { info: "11" },

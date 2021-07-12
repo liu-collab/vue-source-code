@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <script>
+    // 全局的 event 对象, 提供 on, off, emit 方法  
+    var event = (function () {
+
+      eventObjs = {};
+      return {
+        //注册事件,可以连续注册多个事件
+        on: function (type, hanlder) {
+          (eventObjs[type] || (eventObjs[type] = [])).push(hanlder)
+        },
+        //删除事件
+        // 没有带参数 移除所有事件
+        // 带一个参数 ,移除当前事件的所有函数
+        // 带两个参数 , 移除某一个事件的具体处理函数
+        off: function (type, hanlder) {
+          if (arguments.length === 0) {  //移除所有事件
+            eventObjs = {}
+          } else if (arguments.length === 1) {  //移除当前事件的所有处理函数
+            eventObjs[type] = []
+          } else if (arguments.length === 2) {  //移除type 类的handle的胡处理函数
+            let _events = eventObjs[type]
+            if (!_events) return;
+            //倒循化 数组的序号不会受影响
+            for (let i = _events.length - 1; i >= 0; i--) {
+              if (_events[i] === hanlder) {
+                _events.splice(i, 1)
+              }
+            }
+
+          }
+        },
+        emit: function (type) {
+
+        }
+      }
+
+    }())
+  </script>
+</body>
+
+</html>
