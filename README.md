@@ -683,6 +683,7 @@ Vue 模型
   - 只会访问该组件的 watcher
   - 也就表示再次往全局存储的只有该组件的 watcher
   - 页面更新的时候也就只需要更新一部分
+  - ![Image text](./day02/img/watcher.png)
 
 
 # 改写 observe 函数
@@ -748,7 +749,9 @@ Watcher 会有一些方法:
       - `name: () => this.firstName + this.lastName` 
         - 计算属性 依赖于 属性 firstName 和 属性 lastName
         - 只要被依赖的属性发生变化, 那么就会促使计算属性 **重新计算** ( Watcher )
+        - 
 - 依赖收集与派发更新是怎么运行起来的
+- ![Image text](./day02/img/收集依赖.png)
 
 **我们在访问的时候 就会进行收集, 在修改的时候就会更新, 那么收集什么就更新什么**
 

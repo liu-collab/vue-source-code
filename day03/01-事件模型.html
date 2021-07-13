@@ -41,12 +41,20 @@
           }
         },
         emit: function (type) {
-
+          let argus = Array.prototype.slice.call(arguments, 1)
+          let _events = eventObjs[type]
+          for (let i = 0; i < _events.length; i++) {
+            _events[i].apply(null, argus)
+          }
         }
       }
 
     }())
+  //ji中基本类型比较的是值
+  //引用类型比较的是地址
+  ///引用类型和基本类型比较 是将其转换为基本类型进行比较  如果是 ===是严格等于不转换比较  
   </script>
+
 </body>
 
 </html>
